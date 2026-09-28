@@ -204,3 +204,14 @@ body.axsx-preview .desktop-header .header-right > .workspace-language-control se
   body.axsx-preview #sx-canvas:not(.sx-free) .sx-card footer > span:first-child {flex: 1 1 auto}
   body.axsx-preview #sx-canvas:not(.sx-free) .sx-card footer > span + span {flex: 0 0 auto}
 }
+
+/* (2026-09-28 사용자 요청) 위젯 편집: 바탕화면 파일처럼 놓으면 칸에 맞춰 들어간다(widgets.js spot/settle).
+   끄는 동안 들어갈 자리를 점선으로 미리 보여 주고, 놓으면 그 자리로 부드럽게 이동한다. */
+body.axsx-preview #sx-canvas .sx-drop-ghost {
+  position: absolute; z-index: 1; box-sizing: border-box; pointer-events: none;
+  border: 2px dashed var(--axp-accent, #7aa2e3); border-radius: 19px;
+  background: color-mix(in srgb, var(--axp-accent, #2563eb) 7%, transparent);
+}
+body.axsx-preview #sx-canvas .sx-drop-ghost[hidden] {display: none}
+body.axsx-preview #sx-canvas .sx-card.sx-snapping {transition: left .22s cubic-bezier(.2, .8, .2, 1), top .22s cubic-bezier(.2, .8, .2, 1)}
+@media (prefers-reduced-motion: reduce) {body.axsx-preview #sx-canvas .sx-card.sx-snapping {transition: none}}

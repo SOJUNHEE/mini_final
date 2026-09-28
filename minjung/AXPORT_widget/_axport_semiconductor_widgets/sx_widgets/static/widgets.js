@@ -59,11 +59,29 @@
  function restore(id){state.hidden=state.hidden.filter(x=>x!==id);layout();save();renderTrash();}
  function renderTrash(){const list=$('#sx-trash-list');list.replaceChildren();for(const id of state.hidden){const row=node('div','sx-trash-row'),button=node('button','',t('restore'));button.type='button';button.addEventListener('click',()=>restore(id));row.append(node('span','',t(titles[id])),button);list.append(row);}if(!state.hidden.length)list.append(node('p','sx-empty',t('emptyTrash')));$('#sx-restore-all').disabled=!state.hidden.length;}
  $$('[data-sx-delete]').forEach(b=>b.addEventListener('click',()=>hide(b.dataset.sxDelete)));
- $$('[data-sx-widget]').forEach(w=>{
-  const handle=$('.sx-handle',w);handle.tabIndex=-1;
-  handle.addEventListener('pointerdown',ev=>{if(!editing||ev.button!==0||ev.target.closest('button'))return;ev.preventDefault();freeze();drag={id:ev.pointerId,w,handle,x:ev.clientX,y:ev.clientY,left:w.offsetLeft,top:w.offsetTop,scroll:board.scrollTop};handle.setPointerCapture(ev.pointerId);w.classList.add('sx-dragging');});
-  handle.addEventListener('pointermove',ev=>{if(!drag||drag.id!==ev.pointerId)return;place(w,drag.left+ev.clientX-drag.x,drag.top+ev.clientY-drag.y+board.scrollTop-drag.scroll);$('#desktop-icons [data-id="trash"]')?.classList.toggle('sx-trash-target',onTrash(ev.clientX,ev.clientY));});
-  const end=ev=>{if(!drag||drag.id!==ev.pointerId)return;const remove=ev.type==='pointerup'&&onTrash(ev.clientX,ev.clientY);if(handle.hasPointerCapture(ev.pointerId))handle.releasePointerCapture(ev.pointerId);drag=null;w.classList.remove('sx-dragging');$('#desktop-icons [data-id="trash"]')?.classList.remove('sx-trash-target');if(remove)hide(w.dataset.sxWidget);save();};
+ // (junhee) 2026-09-28 바탕화면 파일처럼: 편집 모드에서 위젯을 놓으면 16px 격자에 맞추고, 다른 위젯과 겹치면 보이는 영역 안의 가장 가까운 빈 자리로 들어간다.
+ // 끄는 동안에는 들어갈 자리를 점선(.sx-drop-ghost)으로 미리 보여 준다. 빈 자리가 없으면 원래 자리(home)로 돌아간다.
+ const GRID=16,GAP=12;let ghost=null,ghostFrame=0;
+ function spot(w,x,y,home){
+  const ww=w.offsetWidth,hh=w.offsetHeight,maxX=Math.max(0,canvas.clientWidth-ww),maxY=Math.max(0,board.clientHeight+board.scrollTop-8-hh);
+  const others=$$('[data-sx-widget]').filter(o=>o!==w&&!o.hidden).map(o=>({l:o.offsetLeft,t:o.offsetTop,r:o.offsetLeft+o.offsetWidth,b:o.offsetTop+o.offsetHeight}));
+  const free=(l,t)=>others.every(o=>l+ww+GAP<=o.l||l>=o.r+GAP||t+hh+GAP<=o.t||t>=o.b+GAP);
+  const steps=max=>{const list=[];for(let v=0;v<max;v+=GRID)list.push(v);list.push(max);return list;}; // 오른쪽·아래 끝에도 딱 붙을 수 있게 끝값 포함
+  const near=(v,max)=>{const s=Math.max(0,Math.min(max,Math.round(v/GRID)*GRID));return max-s<GRID/2?max:s;};
+  const sx=near(x,maxX),sy=near(y,maxY);
+  if(free(sx,sy))return{x:sx,y:sy};
+  let best=null,bd=Infinity;
+  for(const t of steps(maxY))for(const l of steps(maxX)){const d=(l-x)**2+(t-y)**2;if(d<bd&&free(l,t)){bd=d;best={x:l,y:t};}}
+  return best||home||{x:sx,y:sy};
+ }
+ function showGhost(w){cancelAnimationFrame(ghostFrame);ghostFrame=requestAnimationFrame(()=>{if(!drag)return;if(!ghost){ghost=node('div','sx-drop-ghost');ghost.setAttribute('aria-hidden','true');canvas.append(ghost);}const s=spot(w,w.offsetLeft,w.offsetTop,{x:drag.left,y:drag.top});Object.assign(ghost.style,{left:`${s.x}px`,top:`${s.y}px`,width:`${w.offsetWidth}px`,height:`${w.offsetHeight}px`});ghost.hidden=false;});}
+ function hideGhost(){cancelAnimationFrame(ghostFrame);if(ghost)ghost.hidden=true;}
+ function settle(w,home){const s=spot(w,w.offsetLeft,w.offsetTop,home);w.classList.add('sx-snapping');place(w,s.x,s.y);setTimeout(()=>w.classList.remove('sx-snapping'),240);}
+ $$('[data-sx-widget]').forEach(w=>{
+  const handle=$('.sx-handle',w);handle.tabIndex=-1;
+  handle.addEventListener('pointerdown',ev=>{if(!editing||ev.button!==0||ev.target.closest('button'))return;ev.preventDefault();freeze();drag={id:ev.pointerId,w,handle,x:ev.clientX,y:ev.clientY,left:w.offsetLeft,top:w.offsetTop,scroll:board.scrollTop,moved:false};handle.setPointerCapture(ev.pointerId);w.classList.add('sx-dragging');});
+  handle.addEventListener('pointermove',ev=>{if(!drag||drag.id!==ev.pointerId)return;if(!drag.moved&&Math.abs(ev.clientX-drag.x)+Math.abs(ev.clientY-drag.y)<5)return;drag.moved=true;place(w,drag.left+ev.clientX-drag.x,drag.top+ev.clientY-drag.y+board.scrollTop-drag.scroll);const over=onTrash(ev.clientX,ev.clientY);$('#desktop-icons [data-id="trash"]')?.classList.toggle('sx-trash-target',over);if(over)hideGhost();else showGhost(w);});
+  const end=ev=>{if(!drag||drag.id!==ev.pointerId)return;const remove=ev.type==='pointerup'&&onTrash(ev.clientX,ev.clientY),moved=drag.moved,home={x:drag.left,y:drag.top};if(handle.hasPointerCapture(ev.pointerId))handle.releasePointerCapture(ev.pointerId);drag=null;hideGhost();w.classList.remove('sx-dragging');$('#desktop-icons [data-id="trash"]')?.classList.remove('sx-trash-target');if(remove)hide(w.dataset.sxWidget);else if(moved)settle(w,home);save();};
   handle.addEventListener('pointerup',end);handle.addEventListener('pointercancel',end);
   handle.addEventListener('keydown',ev=>{if(!editing||ev.target!==handle)return;if(ev.key==='Delete'){ev.preventDefault();hide(w.dataset.sxWidget);return;}const directions={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(directions[ev.key]){ev.preventDefault();freeze();const [x,y]=directions[ev.key],step=ev.shiftKey?40:10;place(w,w.offsetLeft+x*step,w.offsetTop+y*step);save();}});
  });
