@@ -13,7 +13,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from functools import lru_cache
 from hashlib import sha256
-from io import BytesIO, StringIO
+from io import BytesIO, TextIOWrapper
 import json
 from pathlib import Path
 import re
@@ -501,7 +501,8 @@ def collect_trade(inputs, keys, progress=None, session=None):
 @lru_cache(maxsize=32)
 def _read_tariff(path, hs6, mtime_ns, size):
     content = Path(path).read_bytes()
-    reader = csv.DictReader(StringIO(content.decode('utf-8-sig')))
+    # (2026-09-28 메모리) 20MB CSV 를 통째로 문자열로 바꾸지 않고 한 줄씩 해석한다(미국 파일 약 120MB → 수 MB, 결과 동일)
+    reader = csv.DictReader(TextIOWrapper(BytesIO(content), encoding='utf-8-sig', newline=''))
     required = {'reporter_code', 'partner_code', 'hs_code', 'year_dt', 'best_avlbl', 'imports'}
     if not required <= set(reader.fieldnames or []):
         raise ValueError('관세 CSV 열 구성이 다릅니다.')
@@ -558,14 +559,24 @@ def _tariff(inputs, root_path):
 def _read_bok(path, mtime_ns, size):
     from openpyxl import load_workbook
     content = Path(path).read_bytes()
-    workbook = load_workbook(BytesIO(content), read_only=True, data_only=True)
+    # keep_links=False: 이 파일 안의 외부 링크 XML(약 31MB)을 해석하지 않는다. 저장된 값(data_only)만 읽으므로 결과 동일
+    workbook = load_workbook(BytesIO(content), read_only=True, data_only=True, keep_links=False)
     try:
         sheet = workbook['1.수출(기본분류)']
-        rows = list(sheet.iter_rows(values_only=True))
+        # (2026-09-28 메모리) 쓰는 칸은 A~G열·5행·7행·대상 행뿐이라 7열까지만 한 줄씩 읽고 대상 행을 찾으면 멈춘다(결과 동일).
+        rows, found = [], None
+        for n, r in enumerate(sheet.iter_rows(values_only=True, max_col=7), 1):
+            if n <= 7:
+                rows.append(r)
+            if found is None and str(r[0]).replace(' ', '') == '컴퓨터,전자및광학기기':
+                found = (n, r)
+            if found is not None and n >= 7:
+                break
         if '원화기준' not in str(rows[4][0]) or '2020=100' not in str(rows[4][6]):
             raise ValueError
-        row_number, values = next((n, r) for n, r in enumerate(rows, 1)
-                                  if str(r[0]).replace(' ', '') == '컴퓨터,전자및광학기기')
+        if found is None:
+            raise StopIteration
+        row_number, values = found
         observations = []
         for column in (2, 3):
             match = re.fullmatch(r'(\d{4})\.\s*(\d{1,2})(p?)', str(rows[6][column]).strip())

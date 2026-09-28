@@ -88,8 +88,13 @@ def _read_source(path, provider):
 
 
 def _csv_rows(data):
-    return [{_text(k): v for k, v in row.items() if k is not None}
-            for row in csv.DictReader(io.StringIO(data.decode("utf-8-sig")))]
+    return list(_iter_csv_rows(data))
+
+
+def _iter_csv_rows(data):
+    # (2026-09-28 메모리) 큰 CSV(ITA 17MB)는 목록으로 모으지 않고 한 줄씩 넘긴다. 문자열 전체 변환도 하지 않는다(행 내용은 _csv_rows 와 같음)
+    for row in csv.DictReader(io.TextIOWrapper(io.BytesIO(data), encoding="utf-8-sig", newline="")):
+        yield {_text(k): v for k, v in row.items() if k is not None}
 
 
 def _scope(company, inputs):
@@ -268,10 +273,9 @@ def evaluate_regulation(company, inputs, root_path, *, law_snapshot=None):
     csl_matches = []
     try:
         data, source = _read_source(base / "ITA_consolidated_screening_list.csv", "미국 ITA CSL 보유 CSV")
-        rows = _csv_rows(data)
-        source["record_count"] = len(rows)
-        factor["sources"].append(source)
-        for record_number, row in enumerate(rows, 1):
+        record_count = 0
+        for record_number, row in enumerate(_iter_csv_rows(data), 1):
+            record_count = record_number
             # Only the primary name is automatically compared: alternate-name
             # delimiters are not asserted without a verified schema.
             name = _normal_name(row.get("name"))
@@ -282,11 +286,14 @@ def evaluate_regulation(company, inputs, root_path, *, law_snapshot=None):
             csl_matches.append({field: row.get(field) for field in ("_id", "source", "name", "alt_names", "addresses", "ids", "start_date", "end_date", "programs", "license_requirement", "license_policy", "remarks", "source_list_url", "source_information_url")}
                 | {"status": "NAME_CANDIDATE", "period_status": period_status,
                    "evidence": [{"source_id": source["id"], "row": record_number, "field": "source + _id + name"}] + names[name]})
+        source["record_count"] = record_count
+        factor["sources"].append(source)
         factor["metrics"].append(_metric("csl_candidates", "거래처·최종사용자 이름 일치 후보", len(csl_matches) if names else None, "건",
             status="REVIEW_REQUIRED" if names else "INSUFFICIENT",
             reason="주 이름의 유니코드 정규화 일치만 확인; 별칭·유사명·주소/식별자 실체확인 미완료. 불일치는 제재 해제를 뜻하지 않습니다." if names else "선택 거래의 거래처/최종사용자 이름이 필요합니다.",
             evidence=[item for match in csl_matches for item in match["evidence"]]))
     except (OSError, UnicodeError, csv.Error) as exc:
+        csl_matches = []  # 한 줄씩 읽다가 중간에 실패해도 예전(전체 읽기 실패)과 같이 후보 없음으로 둔다
         factor["warnings"].append("CSL 스냅샷 조회 불가: " + type(exc).__name__)
         factor["metrics"].append(_metric("csl_candidates", "거래처·최종사용자 이름 일치 후보", reason="CSL 원본을 읽을 수 없습니다."))
     factor["party_candidates"] = csl_matches
