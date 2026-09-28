@@ -340,6 +340,10 @@ class ConfirmQueryMiddleware:
         self.application = application
 
     def __call__(self, environ, start_response):
+        # (2026-09-28) Supabase 가 redirect_to 를 허용 목록에서 못 찾으면 인증 링크를 Site URL(루트)로 보낸다.
+        # 루트에 token_hash 가 붙어 오면 /auth/confirm 과 똑같이 처리한다(검증 규칙은 confirm_email 그대로).
+        if environ.get('PATH_INFO') in ('/', '') and 'token_hash=' in environ.get('QUERY_STRING', ''):
+            environ['PATH_INFO'] = '/auth/confirm'
         if environ.get('PATH_INFO') == '/auth/confirm':
             try:
                 pairs = parse_qsl(environ.get('QUERY_STRING', ''), keep_blank_values=True,

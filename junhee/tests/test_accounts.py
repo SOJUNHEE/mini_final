@@ -140,6 +140,15 @@ class Flow(unittest.TestCase):
         self.assertIn('유효하지 않거나 만료', r.get_data(as_text=True))
         self.provider.confirm_email.assert_not_called()
 
+    def test_confirm_link_at_site_root(self):
+        # (2026-09-28) Supabase 가 Site URL(루트)로 보낸 인증 링크도 /auth/confirm 과 같이 처리
+        self.provider.confirm_email.return_value = {'user': USER, 'access_token': 'verify-token'}
+        r = self.c.get('/?token_hash=' + 'ab' * 20 + '&type=email')
+        self.assertEqual((r.status_code, r.headers['Location']), (303, '/auth/confirm/result'))
+        self.provider.confirm_email.assert_called_with('ab' * 20)
+        self.assertIn('이메일 인증이 완료되었습니다', self.c.get(r.headers['Location']).get_data(as_text=True))
+        self.assertEqual(self.c.get('/').status_code, 200)  # 쿼리 없는 홈은 그대로
+
 
 if __name__ == '__main__':
     unittest.main()
