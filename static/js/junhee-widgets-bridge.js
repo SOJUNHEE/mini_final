@@ -540,6 +540,7 @@
     const s = $(`#sx-${kind}-source`);
     if (!s) return;
     s.textContent = text;
+    s.title = text; // (2026-09-28) 기본 배치에서는 한 줄 말줄임이라 전체 문장은 마우스를 올려 본다
     const f = s.closest("footer");
     if (f) f.hidden = false;
   }

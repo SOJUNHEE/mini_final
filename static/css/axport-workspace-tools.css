@@ -188,3 +188,19 @@ body.axsx-preview .desktop-header .header-right > .workspace-language-control se
   body.axsx-preview .desktop-header .header-right > .workspace-language-control > .ph-caret-down {width:22px;font-size:12px}
   body.axsx-preview .desktop-header .header-right > .workspace-language-control select {padding:0 22px 0 31px;font-size:11px}
 }
+
+/* (2026-09-28 사용자 요청) 오른쪽 위젯 3개(환율·뉴스·수출기상도)를 처음 화면에서 같은 높이(1/3씩)로.
+   예전: 환율=내용 높이, 수출기상도=내용 높이까지, 뉴스=남는 높이 → 가운데 뉴스만 눌려 보였다.
+   넘치는 내용은 각 카드 안쪽(환율 행·뉴스 목록·수출기상도 표)만 스크롤한다. 편집 모드(자유 배치)는 그대로. */
+@media (min-width: 901px) {
+  body.axsx-preview #sx-canvas:not(.sx-free) {grid-template-rows: repeat(3, minmax(0, 1fr))}
+  body.axsx-preview #sx-canvas:not(.sx-free) .sx-fx {align-self: stretch; min-height: 0; display: flex; flex-direction: column}
+  body.axsx-preview #sx-canvas:not(.sx-free) .sx-fx .sx-handle,
+  body.axsx-preview #sx-canvas:not(.sx-free) .sx-fx footer {flex-shrink: 0}
+  body.axsx-preview #sx-canvas:not(.sx-free) #sx-fx-rows {flex: 1 1 auto; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; overscroll-behavior: contain}
+  /* 카드가 낮아진 만큼 출처 문구는 한 줄(말줄임, 전체 문장은 마우스를 올리면 보임 — junhee-widgets-bridge.js footer 의 title) */
+  body.axsx-preview #sx-canvas:not(.sx-free) .sx-card footer {flex-wrap: nowrap; min-width: 0}
+  body.axsx-preview #sx-canvas:not(.sx-free) .sx-card footer > span {min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap}
+  body.axsx-preview #sx-canvas:not(.sx-free) .sx-card footer > span:first-child {flex: 1 1 auto}
+  body.axsx-preview #sx-canvas:not(.sx-free) .sx-card footer > span + span {flex: 0 0 auto}
+}
