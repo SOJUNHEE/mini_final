@@ -71,6 +71,8 @@
       if(!centered)header.classList.add('axp-clock-fit');
       L=hr.left+padL;
       [...header.children].forEach(el=>{if(el===right||el===group||el===clocks||el.id==='sx-toolbar'||!shown(el))return;const r=el.getBoundingClientRect();if(r.width&&r.right<=mid)L=Math.max(L,r.right);});
+      const date=$('#desktop-date'); // (2026-09-28) 날짜가 시계 앞(가운데 묶음 안)으로 옮겨졌다 — 흐름 배치에서는 날짜 오른쪽부터 시계 자리
+      if(!centered&&date&&shown(date)&&clocks.parentElement&&clocks.parentElement.contains(date))L=Math.max(L,date.getBoundingClientRect().right);
       const kids=right?[...right.children].filter(shown):[];
       if(centered)R=kids.length?Math.min(...kids.map(k=>k.getBoundingClientRect().left)):hr.right-padR;
       else R=hr.right-padR-(right&&shown(right)?right.getBoundingClientRect().width:0);

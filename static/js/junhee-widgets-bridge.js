@@ -254,16 +254,13 @@
       if (!m) return;
       row.dataset.jdFx = "1";
       const a = CUR[m[1]], b = CUR[m[2]];
-      const flag = document.createElement("span");
-      flag.className = "jd-flag";
-      flag.setAttribute("aria-hidden", "true");
-      flag.innerHTML = `${a ? a[0] : m[1].slice(0, 2)}<i class="ph ph-arrow-right"></i>${b ? b[0] : m[2].slice(0, 2)}`;
+      // (2026-09-28 사용자 요청) 환율 앞 국가 칩(US → KR) 삭제 — 통화쌍·설명만 남긴다
       const meta = document.createElement("div");
       meta.className = "jd-fx-meta";
       pairEl.textContent = `${m[1]} / ${m[2]}`;
       meta.append(pairEl);
       if (a && b) { const d = document.createElement("em"); d.textContent = ko ? `1 ${a[1]}당 ${b[1]}` : `${b[2]} per 1 ${a[2]}`; meta.append(d); }
-      row.prepend(flag, meta);
+      row.prepend(meta);
     });
   }
 
@@ -416,6 +413,9 @@
     if (!center) { center = document.createElement("div"); center.className = "jd-header-center"; header.insertBefore(center, (clocks && clocks.parentElement === header) ? clocks : $(".header-right", header)); }
     if (clocks && clocks.parentElement !== center) center.append(clocks);
     if (tb.parentElement !== center) center.append(tb);
+    // (2026-09-28 사용자 요청) 머리글 순서: 날짜 → 세계 시간 → 위젯 → 언어. 날짜를 가운데 묶음 맨 앞으로 옮긴다
+    const date = $("#desktop-date");
+    if (date && center.firstElementChild !== date) center.prepend(date);
     tb.classList.add("jd-in-header");
     toolbarTexts();
   }
@@ -525,18 +525,16 @@
   const nf = (v, d) => new Intl.NumberFormat((window.AXPI18n && AXPI18n.locale) || "ko-KR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; n.dataset.jdLive = "1"; return n; };
   const OWN_SRC = {
-    officialFx: { ko: "공식 환율", en: "Official rate", zh: "官方汇率", ja: "公式レート" },
-    officialStat: { ko: "공식 통계", en: "Official data", zh: "官方统计", ja: "公式統計" },
-    rss: { ko: "뉴스 RSS", en: "News RSS", zh: "新闻 RSS", ja: "ニュースRSS" },
     prevDay: { ko: "전 영업일 대비", en: "vs previous business day", zh: "较前一营业日", ja: "前営業日比" },
   };
   const own2 = (k) => OWN_SRC[k][lang()] || OWN_SRC[k].ko;
-  function badge(kind, text) {
+  // (2026-09-28 사용자 요청) 공식 자료를 넣은 위젯은 머리 배지(공식 환율·뉴스 RSS·공식 통계)를 숨긴다.
+  // 자료 파일이 없어 widgets.js 예시 데이터가 보일 때의 '예시' 배지는 그대로 둔다.
+  function badge(kind) {
     const b = $(`#sx-${kind}-badge`);
     if (!b) return;
-    b.textContent = text;
-    b.classList.add("live");
-    b.hidden = false;
+    b.textContent = "";
+    b.hidden = true;
   }
   function footer(kind, text) {
     const s = $(`#sx-${kind}-source`);
@@ -557,7 +555,7 @@
     }));
     box.dataset.jdLive = "1";
     decorateFx();
-    badge("fx", own2("officialFx"));
+    badge("fx");
     footer("fx", `${lang() === "ko" ? d.source : d.source_en || d.source} · ${d.as_of} · ${own2("prevDay")}`);
   }
   function applyNews() {
@@ -572,7 +570,7 @@
       return it;
     }));
     box.dataset.jdLive = "1";
-    badge("news", own2("rss"));
+    badge("news");
     footer("news", `${d.source || ""} · ${(all.fetched_at || "").slice(0, 10)}`);
   }
   function applyWeather() {
@@ -587,7 +585,7 @@
       return tr;
     }));
     body.dataset.jdLive = "1";
-    badge("weather", own2("officialStat"));
+    badge("weather");
     const p = $("#sx-weather-period");
     if (p) p.textContent = `${WT("base")}: ${d.period}, ${WT("cumulative")}`;
     footer("weather", `${lang() === "ko" ? d.source : d.source_en || d.source} · ${d.compare} ${lang() === "ko" ? "대비" : "vs"}`);

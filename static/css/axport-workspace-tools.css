@@ -164,3 +164,27 @@ body.jd-upload-open .desktop-header::after {z-index:300}
 body.axsx-preview #analysis-window .jd-card-main > div:first-child {min-width:0} /* 요약이 카드 폭 안에서 줄바꿈되게(기존 내용 폭은 그대로) */
 body.axsx-preview #analysis-window .jd-card-sum {margin-top:4px;max-width:100%;font-size:12px;line-height:1.45;font-weight:500;color:#475569;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere;word-break:keep-all}
 body.axsx-preview #analysis-window .jd-card-foot > .jd-more {margin-left:auto}
+
+/* (2026-09-28 사용자 요청) 머리글 순서: 날짜 → 세계 시간 → 위젯 → 언어. 날짜는 가운데 묶음 맨 앞으로 옮겨져도(junhee-widgets-bridge.js moveToolbar) 원래 글꼴 그대로 */
+body.axsx-preview .desktop-header .jd-header-center > #desktop-date {flex:0 0 auto;color:#8891a5;font-size:11px;white-space:nowrap}
+/* (2026-09-28 사용자 요청) 언어 선택 = 위젯 버튼과 같은 모양(38px 알약·12px 둥근 모서리·흰 바탕·지구본 아이콘 안쪽·오른쪽 화살표).
+   선택 상자가 알약 전체를 덮어 어디를 눌러도 열린다. 아이콘은 그 위에 그림만 얹는다(pointer-events:none). */
+body.axsx-preview .desktop-header .header-right > .workspace-language-control {
+  position:relative;display:inline-flex;align-items:center;gap:0;height:38px;margin-right:0;padding:0;box-sizing:border-box;
+  border:1px solid var(--axp-line,#d7e4f5);border-radius:12px;background:var(--axp-surface,#fff);color:var(--axp-ink,#243b58);
+  box-shadow:0 1px 3px #0f172a10;font-size:12px;font-weight:600;
+}
+body.axsx-preview .desktop-header .header-right > .workspace-language-control:hover {border-color:var(--axp-accent,#9fb7d6)}
+body.axsx-preview .desktop-header .header-right > .workspace-language-control:focus-within {outline:2px solid var(--axp-accent,#2563eb);outline-offset:2px}
+body.axsx-preview .desktop-header .header-right > .workspace-language-control > i {position:absolute;z-index:1;color:var(--axp-ink,#243b58);pointer-events:none}
+body.axsx-preview .desktop-header .header-right > .workspace-language-control > .ph-globe-hemisphere-west {left:12px;font-size:20px}
+body.axsx-preview .desktop-header .header-right > .workspace-language-control > .ph-caret-down {right:0;width:31px;display:grid;place-items:center;font-size:14px}
+body.axsx-preview .desktop-header .header-right > .workspace-language-control select {
+  height:36px;min-height:0;max-width:none;margin:0;padding:0 31px 0 39px;border:0;border-radius:11px;outline:none;
+  background:transparent;color:inherit;font:inherit;font-size:12px;font-weight:600;line-height:1.25;cursor:pointer;
+}
+@media(max-width:850px){
+  body.axsx-preview .desktop-header .header-right > .workspace-language-control > .ph-globe-hemisphere-west {left:9px;font-size:17px}
+  body.axsx-preview .desktop-header .header-right > .workspace-language-control > .ph-caret-down {width:22px;font-size:12px}
+  body.axsx-preview .desktop-header .header-right > .workspace-language-control select {padding:0 22px 0 31px;font-size:11px}
+}
