@@ -25,8 +25,9 @@ LOCAL_HOSTS = ('localhost', '127.0.0.1', '::1')
 
 
 def allowed_hosts():
-    """로컬 주소 + 배포 주소(AXPORT_PUBLIC_URL 의 호스트)만 허용한다. 그 밖의 Host 는 DNS 재바인딩으로 보고 막는다."""
-    public = urlsplit(os.getenv('AXPORT_PUBLIC_URL', '').strip())
+    """로컬 주소 + 배포 주소(AXPORT_PUBLIC_URL 의 호스트)만 허용한다. 그 밖의 Host 는 DNS 재바인딩으로 보고 막는다.
+    AXPORT_PUBLIC_URL 이 비어 있으면 Render 가 자동으로 넣어 주는 RENDER_EXTERNAL_URL 을 쓴다."""
+    public = urlsplit((os.getenv('AXPORT_PUBLIC_URL', '').strip() or os.getenv('RENDER_EXTERNAL_URL', '').strip()))
     extra = (public.hostname,) if public.scheme in ('http', 'https') and public.hostname else ()
     return LOCAL_HOSTS + extra
 

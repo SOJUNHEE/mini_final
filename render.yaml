@@ -20,7 +20,7 @@ services:
       - key: AXPORT_DATA_MODE
         value: demo
       - key: AXPORT_CHAT_MODE
-        value: demo
+        value: live  # (2026-09-29) 챗봇 AI 연결. OPENAI_API_KEY·OPENAI_MODEL 은 Render 대시보드에 직접 입력
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL

@@ -142,6 +142,25 @@
     if (text) node.textContent = text;
     messages.append(node); return node;
   }
+  // (2026-09-29) AI 답변을 한 번에 붙이지 않고 빠르게 타이핑하듯 보여 준다(최대 약 2초).
+  // 움직임 줄이기 설정이면 바로 전체를 보여 주고, 탭이 숨겨지면 남은 글자를 한 번에 채운다.
+  function typeOut(node, text, token) {
+    const chars = Array.from(text);
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || chars.length < 2) { node.textContent = text; return Promise.resolve(); }
+    const step = Math.max(2, Math.ceil(chars.length / 120)), textNode = document.createTextNode('');
+    node.replaceChildren(textNode);
+    let shown = 0;
+    return new Promise(resolve => {
+      const tick = () => {
+        if (token !== generation) return resolve();
+        const next = document.hidden ? chars.length : Math.min(chars.length, shown + step);
+        textNode.appendData(chars.slice(shown, next).join('')); shown = next;
+        if (opened && following) body.scrollTop = body.scrollHeight;
+        if (shown < chars.length) setTimeout(tick, 16); else resolve();
+      };
+      tick();
+    });
+  }
   async function request(question, answer) {
     if (pending) return;
     pending = true; sync();
@@ -177,10 +196,12 @@
       if (live) {
         answer.lang = requestLocale;
         const label = document.createElement('small'); label.textContent = textFor('replyLabel', requestLocale);
-        const content = document.createElement('div'); content.textContent = result.answer;
+        const content = document.createElement('div');
         answer.replaceChildren(label, content);
         history.push({role:'user', content:question}, {role:'assistant', content:result.answer});
         while (history.length > 12 || history.reduce((sum, item) => sum + item.content.length, 0) > 24000) history.splice(0, 2);
+        await typeOut(content, result.answer, token);
+        if (token !== generation) return;
       } else {
         answer.dataset.demoComplete = 'true';
         renderAnswer(answer);
